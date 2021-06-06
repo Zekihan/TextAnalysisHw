@@ -58,15 +58,14 @@ def latent_dirichlet_allocation(corpus, id2word, data_words):
                                                                         id2word=id2word,
                                                                         num_topics=2,
                                                                         random_state=100,
-                                                                        chunksize=10,
+                                                                        chunksize=100,
                                                                         passes=10,
-                                                                        alpha='symmetric',
-                                                                        iterations=100,
+                                                                        iterations=200,
                                                                         per_word_topics=True)
     # Format topics
     sent_topics_df = format_topics_sentences(latent_dirichlet_allocation_model, corpus, data_words)
     df_dominant_topic = sent_topics_df.reset_index()
-    df_dominant_topic.columns = ['Document_No', 'Dominant_Topic', 'Topic_Perc_Contrib', 'Keywords', 'Text']
+    df_dominant_topic.columns = ['Document_No', 'Dominant_Topic', 'Topic_Per_Contrib', 'Keywords', 'Text']
     print(df_dominant_topic.head(10))
     print(df_dominant_topic['Dominant_Topic'].unique())
     plt_latent_dirichlet_allocation(latent_dirichlet_allocation_model)
@@ -86,7 +85,7 @@ def format_topics_sentences(latent_dirichlet_allocation_model, corpus, texts):
                     pd.Series([int(topic_num), round(prop_topic, 4), topic_keywords]), ignore_index=True)
             else:
                 break
-    sent_topics_df.columns = ['Dominant_Topic', 'Perc_Contribution', 'Topic_Keywords']
+    sent_topics_df.columns = ['Dominant_Topic', 'Per_Contribution', 'Topic_Keywords']
     contents = pd.Series(texts)
     sent_topics_df = pd.concat([sent_topics_df, contents], axis=1)
     return sent_topics_df
@@ -179,11 +178,11 @@ def stochastic_neighbour_embedding(latent_dirichlet_allocation_model, corpus):
     tsne_model = TSNE(n_components=2, verbose=1, random_state=0, angle=.99, init='pca')
     tsne_lda = tsne_model.fit_transform(arr)
     n_topics = 2
-    mycolors = np.array([color for color in cols])
+    colors = np.array([color for color in cols])
     output_file("stochastic_neighbour_embedding.html", title="line plot example")
     plot = figure(title="t-SNE Clustering of {} LDA Topics".format(n_topics),
                   plot_width=900, plot_height=500)
-    plot.scatter(x=tsne_lda[:, 0], y=tsne_lda[:, 1], color=mycolors[topic_num])
+    plot.scatter(x=tsne_lda[:, 0], y=tsne_lda[:, 1], color=colors[topic_num])
     show(plot)
 
 
@@ -234,9 +233,9 @@ def dmm(df_dominant_topic):
 
     finalAssignments = data_dmm.writeTopicAssignments()
 
-    coherence_topwords = data_dmm.writeTopTopicalWords(finalAssignments)
+    coherence_top_words = data_dmm.writeTopTopicalWords(finalAssignments)
 
-    data_dmm.coherence(coherence_topwords, len(finalAssignments))
+    data_dmm.coherence(coherence_top_words, len(finalAssignments))
 
     print("Final number of topics found: " + str(len(finalAssignments)))
 
