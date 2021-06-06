@@ -1,10 +1,10 @@
 import numpy as np
 import pandas as pd
+from pandas.core.common import flatten
 import re
 import gensim
 import gensim.corpora as corpora
 from matplotlib import pyplot as plt
-from wordcloud import WordCloud
 from collections import Counter
 from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import normalize
@@ -92,34 +92,6 @@ def format_topics_sentences(latent_dirichlet_allocation_model, corpus, texts):
 
 
 def plt_latent_dirichlet_allocation(latent_dirichlet_allocation_model):
-    cloud = WordCloud(stopwords=stop_words,
-                      background_color='white',
-                      width=2500,
-                      height=1800,
-                      max_words=10,
-                      colormap='tab10',
-                      color_func=lambda *args, **kwargs: cols[i],
-                      prefer_horizontal=1.0)
-
-    topics = latent_dirichlet_allocation_model.show_topics(formatted=False)
-
-    fig, axes = plt.subplots(1, 2, figsize=(10, 10), sharex="all", sharey="all")
-
-    for i, ax in enumerate(axes.flatten()):
-        fig.add_subplot(ax)
-        topic_words = dict(topics[i][1])
-        cloud.generate_from_frequencies(topic_words, max_font_size=300)
-        plt.gca().imshow(cloud)
-        plt.gca().set_title('Topic ' + str(i), fontdict=dict(size=16))
-        plt.gca().axis('off')
-
-    plt.subplots_adjust(wspace=0, hspace=0)
-    plt.axis('off')
-    plt.margins(x=0, y=0)
-    plt.tight_layout()
-    plt.savefig('latent_dirichlet_allocation_1.pdf')
-    plt.show()
-
     topics = latent_dirichlet_allocation_model.show_topics(formatted=False)
     data_flat = [w for w_list in data_words for w in w_list]
     counter = Counter(data_flat)
@@ -142,12 +114,12 @@ def plt_latent_dirichlet_allocation(latent_dirichlet_allocation_model):
         ax.tick_params(axis='y', left=False)
         ax.set_xticklabels(df.loc[df.topic_id == i, 'word'], rotation=30, horizontalalignment='right')
     fig.tight_layout(w_pad=2)
-    plt.savefig('latent_dirichlet_allocation_2.pdf')
+    plt.savefig('latent_dirichlet_allocation.pdf')
     plt.show()
 
 
 def principal_components_analysis(documents):
-    tfidf_vectorization = TfidfVectorizer(max_features=4500, min_df=15, max_df=0.7, stop_words=stop_words)
+    tfidf_vectorization = TfidfVectorizer(max_features=5000, min_df=20, max_df=0.5, stop_words=stop_words)
     X = tfidf_vectorization.fit_transform(documents)
     x_upd = pd.DataFrame(X.todense(), columns=tfidf_vectorization.get_feature_names())
     scale = StandardScaler()
@@ -175,18 +147,18 @@ def stochastic_neighbour_embedding(latent_dirichlet_allocation_model, corpus):
     arr = pd.DataFrame(topic_weights).fillna(0).values
     arr = arr[np.amax(arr, axis=1) > 0.35]
     topic_num = np.argmax(arr, axis=1)
-    tsne_model = TSNE(n_components=2, verbose=1, random_state=0, angle=.99, init='pca')
+    tsne_model = TSNE(n_components=2, random_state=0, angle=.99, init='pca')
     tsne_lda = tsne_model.fit_transform(arr)
     n_topics = 2
     colors = np.array([color for color in cols])
     output_file("stochastic_neighbour_embedding.html", title="line plot example")
     plot = figure(title="t-SNE Clustering of {} LDA Topics".format(n_topics),
-                  plot_width=900, plot_height=500)
+                  plot_width=1920, plot_height=1080)
     plot.scatter(x=tsne_lda[:, 0], y=tsne_lda[:, 1], color=colors[topic_num])
     show(plot)
 
 
-def multi_dimensional_scaling():
+def multi_dimensional_scaling(topic_names):
     topic_binary = np.random.randint(2, size=(100, 10))
     dis_matrix = pairwise_distances(topic_binary, metric='jaccard')
     mds_model = manifold.MDS(n_components=2, random_state=123,
@@ -237,14 +209,13 @@ def dmm(df_dominant_topic):
 
     data_dmm.coherence(coherence_top_words, len(finalAssignments))
 
-    print("Final number of topics found: " + str(len(finalAssignments)))
-
 
 if __name__ == '__main__':
-    file_data = pd.read_excel("title_stack.xlsx")
+    file_data = pd.read_csv("title_StackOverflow.txt", delimiter="\n", names=['title'])
     file_data['formatted_title'] = file_data['title'].apply(clean_text)
     data = file_data.formatted_title.values.tolist()
     data_words = list(sent_to_words(data))
+    topic_names = flatten(data_words[:2][:2])
     id2word = corpora.Dictionary(data_words)
     corpus = [id2word.doc2bow(text) for text in data_words]
     latent_dirichlet_allocation_model, df_dominant_topic = latent_dirichlet_allocation(corpus, id2word, data_words)
@@ -252,6 +223,6 @@ if __name__ == '__main__':
     y = df_dominant_topic['Dominant_Topic'].values
     X_scaled = principal_components_analysis(documents)
     stochastic_neighbour_embedding(latent_dirichlet_allocation_model, corpus)
-    multi_dimensional_scaling()
+    multi_dimensional_scaling(topic_names)
     linear_discriminant_analysis(X_scaled)
     dmm(df_dominant_topic)
